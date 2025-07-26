@@ -1,5 +1,5 @@
 # src/agents/transformation_planner_agent.py
-# VERSÃO CORRIGIDA COM TODOS OS IMPORTS E DEFINIÇÕES
+# CORRECTED VERSION WITH ALL IMPORTS AND DEFINITIONS
 
 import re
 import json
@@ -12,7 +12,7 @@ from src.core.data_schema import GraphState, TransformationPlan, DataFrameSchema
 from src.core.llm_config import get_llm
 from src.core.tavily_utils import search_tavily
 
-# IMPORT PARA RAG AVANÇADO
+# IMPORT FOR ADVANCED RAG
 try:
     from src.utils.advanced_rag_system import create_rag_system
     ADVANCED_RAG_AVAILABLE = True
@@ -27,7 +27,7 @@ import os
 # Initialize LLM for direct use in chains where needed.
 llm = get_llm("llama3-8b-8192", temperature=0.3)
 
-# === TODAS AS FUNÇÕES AUXILIARES NECESSÁRIAS ===
+# === ALL NECESSARY AUXILIARY FUNCTIONS ===
 
 def detect_data_characteristics(data_overview: str) -> Dict[str, bool]:
     """
@@ -301,13 +301,17 @@ EVALUATOR_CHAIN = (
     | llm
 )
 
+# Fix the query generator chain to avoid structured output issues
 QUERY_GENERATOR_PROMPT = ChatPromptTemplate.from_messages([
     ("system", """
     You are a data engineering assistant. Based on the provided DataFrame schema's overview summary and user goals,
     generate a concise list of relevant search queries focused on pandas data cleaning and preprocessing techniques.
     Each query should target specific data engineering operations, NOT business logic or calculations.
-    Return only a JSON list of strings, with each string being a search query.
-    Example: ["Pandas convert object to datetime", "Pandas fillna strategies for numerical data"]
+    
+    Return ONLY a JSON array of strings, with each string being a search query.
+    Example format: ["Pandas convert object to datetime", "Pandas fillna strategies for numerical data"]
+    
+    Do not include any other text, just the JSON array.
     """),
     ("user", """
     DataFrame Schema Overview Summary: {data_overview_summary}
@@ -317,7 +321,59 @@ QUERY_GENERATOR_PROMPT = ChatPromptTemplate.from_messages([
     """)
 ])
 
-query_generator_chain = QUERY_GENERATOR_PROMPT | llm.with_structured_output(SearchQueries)
+# Use simple LLM call instead of structured output to avoid function call errors
+def generate_search_queries(data_overview_summary: str, user_instructions: str) -> List[str]:
+    """
+    Generate search queries using simple LLM call to avoid structured output issues
+    """
+    try:
+        response = llm.invoke(
+            QUERY_GENERATOR_PROMPT.format(
+                data_overview_summary=data_overview_summary,
+                user_instructions=user_instructions if user_instructions else "Clean and standardize data for analysis"
+            )
+        )
+        
+        # Extract content
+        response_text = response.content if hasattr(response, 'content') else str(response)
+        
+        # Try to parse JSON from response
+        import json
+        import re
+        
+        # Find JSON array in response
+        json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            queries = json.loads(json_str)
+            if isinstance(queries, list) and all(isinstance(q, str) for q in queries):
+                return queries
+        
+        # Fallback: extract queries from text
+        lines = response_text.split('\n')
+        queries = []
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('#') and not line.startswith('//'):
+                # Clean up the line
+                line = re.sub(r'^["\']|["\']$', '', line)  # Remove quotes
+                line = re.sub(r'^[-*]\s*', '', line)  # Remove list markers
+                if line and len(line) > 5:  # Basic validation
+                    queries.append(line)
+        
+        return queries[:10]  # Limit to 10 queries
+        
+    except Exception as e:
+        print(f"Error in query generation: {e}")
+        # Return default queries
+        return [
+            "Pandas convert object to datetime",
+            "Pandas fillna strategies for numerical data", 
+            "Pandas remove duplicates",
+            "Pandas handle missing values in categorical columns",
+            "Pandas convert categorical columns to numeric",
+            "Pandas standardize data types"
+        ]
 
 # === ENHANCED CRAG FUNCTION ===
 
@@ -413,10 +469,25 @@ def enhanced_crag_search_and_grade(queries: List[str], user_instructions: str, d
                     "document": doc_content
                 })
                 
-                score_match = re.search(r"Score=(\d+)", evaluation_response.content)
-                score = int(score_match.group(1)) if score_match else 0
-                
-                if score >= dynamic_threshold:
+                # Safe content extraction
+                try:
+                    if hasattr(evaluation_response, 'content'):
+                        response_content = evaluation_response.content
+                    elif isinstance(evaluation_response, str):
+                        response_content = evaluation_response
+                    else:
+                        response_content = str(evaluation_response)
+                    
+                    score_match = re.search(r"Score=(\d+)", response_content)
+                    score = int(score_match.group(1)) if score_match else 0
+                    
+                    if score >= dynamic_threshold:
+                        relevant_doc = f"Document Title: {doc_data.get('title', 'N/A')}\nContent: {doc_content}"
+                        relevant_docs.append(relevant_doc)
+                        
+                except Exception as eval_error:
+                    print(f"  Error evaluating document for '{query}': {eval_error}")
+                    # If evaluation fails, include document anyway for better recall
                     relevant_doc = f"Document Title: {doc_data.get('title', 'N/A')}\nContent: {doc_content}"
                     relevant_docs.append(relevant_doc)
 
@@ -472,11 +543,11 @@ def transformation_planner_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # Generate initial queries
     print("--- Dynamically generating data engineering search queries ---")
     try:
-        generated_queries_obj = query_generator_chain.invoke({
-            "data_overview_summary": data_schema.overview_summary,
-            "user_instructions": user_instructions if user_instructions else "Clean and standardize data for analysis"
-        })
-        original_queries = generated_queries_obj.queries
+        generated_queries_obj = generate_search_queries(
+            data_schema.overview_summary,
+            user_instructions or "Clean and standardize data for analysis"
+        )
+        original_queries = generated_queries_obj
         print(f"Original queries generated: {original_queries}")
         
         # Enhance with data engineering focus
@@ -526,8 +597,18 @@ def transformation_planner_node(state: Dict[str, Any]) -> Dict[str, Any]:
             )
         )
         
-        # Extract content
-        response_text = response.content if hasattr(response, 'content') else str(response)
+        # Extract content safely
+        try:
+            if hasattr(response, 'content'):
+                response_text = response.content
+            elif isinstance(response, str):
+                response_text = response
+            else:
+                response_text = str(response)
+        except Exception as content_error:
+            print(f"Error extracting response content: {content_error}")
+            response_text = str(response)
+            
         print(f"Raw LLM response length: {len(response_text)}")
         
         # Try to find and parse JSON
@@ -628,89 +709,159 @@ def create_manual_transformation_plan(data_schema: DataFrameSchema, user_instruc
     """
     Create a manual transformation plan when LLM fails
     """
-    steps = []
-    
-    # Get actual column names from schema
-    if hasattr(data_schema, 'columns') and data_schema.columns:
-        column_names = [col.name for col in data_schema.columns]
+    try:
+        steps = []
+        
+        # Get actual column names from schema safely
+        column_names = []
+        if hasattr(data_schema, 'columns') and data_schema.columns:
+            try:
+                column_names = [col.name for col in data_schema.columns]
+            except Exception as e:
+                print(f"Error extracting column names: {e}")
+                column_names = []
         
         # Add column standardization steps for columns with spaces/special chars
         for col_name in column_names:
-            if ' ' in col_name or '-' in col_name or any(c in col_name for c in ['(', ')', '/', '\\']):
-                steps.append(TransformationStep(
-                    operation_type=OperationType.STANDARDIZE_COLUMN_NAME,
-                    column_name=col_name,
-                    params={},
-                    justification=f"Standardize column name '{col_name}' to follow snake_case convention",
-                    expected_outcome=f"Column renamed to snake_case format"
-                ))
+            try:
+                if ' ' in col_name or '-' in col_name or any(c in col_name for c in ['(', ')', '/', '\\']):
+                    steps.append(TransformationStep(
+                        operation_type=OperationType.STANDARDIZE_COLUMN_NAME,
+                        column_name=col_name,
+                        params={},
+                        justification=f"Standardize column name '{col_name}' to follow snake_case convention",
+                        expected_outcome=f"Column renamed to snake_case format"
+                    ))
+            except Exception as e:
+                print(f"Error creating standardization step for {col_name}: {e}")
+                continue
         
         # Add missing value handling for columns with nulls
-        for col in data_schema.columns:
-            if col.is_nullable and col.dtype == "object":
-                steps.append(TransformationStep(
-                    operation_type=OperationType.HANDLE_NULLS,
-                    column_name=col.name,
-                    params={"strategy": "fill_custom", "value": "N/A"},
-                    justification=f"Handle missing values in categorical column '{col.name}'",
-                    expected_outcome="Missing values filled with 'N/A'"
-                ))
+        if hasattr(data_schema, 'columns') and data_schema.columns:
+            for col in data_schema.columns:
+                try:
+                    if hasattr(col, 'is_nullable') and col.is_nullable and hasattr(col, 'dtype') and col.dtype == "object":
+                        steps.append(TransformationStep(
+                            operation_type=OperationType.HANDLE_NULLS,
+                            column_name=col.name,
+                            params={"strategy": "fill_custom", "value": "N/A"},
+                            justification=f"Handle missing values in categorical column '{col.name}'",
+                            expected_outcome="Missing values filled with 'N/A'"
+                        ))
+                except Exception as e:
+                    print(f"Error creating null handling step for column: {e}")
+                    continue
         
         # Add date conversion for columns that might be dates
-        for col in data_schema.columns:
-            if col.dtype == "object" and any(date_word in col.name.lower() for date_word in ['data', 'date', 'time']):
-                steps.append(TransformationStep(
-                    operation_type=OperationType.CONVERT_TO_DATETIME,
-                    column_name=col.name,
-                    params={"format": "auto"},
-                    justification=f"Convert '{col.name}' to datetime format for proper temporal analysis",
-                    expected_outcome="Column converted to datetime type"
-                ))
+        if hasattr(data_schema, 'columns') and data_schema.columns:
+            for col in data_schema.columns:
+                try:
+                    if hasattr(col, 'dtype') and col.dtype == "object" and hasattr(col, 'name'):
+                        if any(date_word in col.name.lower() for date_word in ['data', 'date', 'time']):
+                            steps.append(TransformationStep(
+                                operation_type=OperationType.CONVERT_TO_DATETIME,
+                                column_name=col.name,
+                                params={"format": "auto"},
+                                justification=f"Convert '{col.name}' to datetime format for proper temporal analysis",
+                                expected_outcome="Column converted to datetime type"
+                            ))
+                except Exception as e:
+                    print(f"Error creating datetime conversion step: {e}")
+                    continue
         
         # Add numeric conversion for value columns  
-        for col in data_schema.columns:
-            if col.dtype == "object" and any(value_word in col.name.lower() for value_word in ['valor', 'price', 'preco', 'cost']):
-                steps.append(TransformationStep(
-                    operation_type=OperationType.CONVERT_TO_NUMERIC,
-                    column_name=col.name,
-                    params={"decimal_separator": "comma", "remove_currency": True},
-                    justification=f"Convert '{col.name}' to numeric format with Brazilian decimal convention",
-                    expected_outcome="Column converted to numeric type with proper decimal format"
-                ))
+        if hasattr(data_schema, 'columns') and data_schema.columns:
+            for col in data_schema.columns:
+                try:
+                    if hasattr(col, 'dtype') and col.dtype == "object" and hasattr(col, 'name'):
+                        if any(value_word in col.name.lower() for value_word in ['valor', 'price', 'preco', 'cost']):
+                            steps.append(TransformationStep(
+                                operation_type=OperationType.CONVERT_TO_NUMERIC,
+                                column_name=col.name,
+                                params={"decimal_separator": "comma", "remove_currency": True},
+                                justification=f"Convert '{col.name}' to numeric format with Brazilian decimal convention",
+                                expected_outcome="Column converted to numeric type with proper decimal format"
+                            ))
+                except Exception as e:
+                    print(f"Error creating numeric conversion step: {e}")
+                    continue
         
         # Add duplicate removal
         if len(column_names) > 5:  # Only for datasets with multiple columns
-            steps.append(TransformationStep(
-                operation_type=OperationType.REMOVE_DUPLICATES,
-                column_name="all_columns",
-                params={},
-                justification="Remove duplicate rows to ensure data quality",
-                expected_outcome="Duplicate rows removed"
-            ))
-    
-    # If no specific steps, add generic ones
-    if not steps:
-        steps = [
-            TransformationStep(
-                operation_type=OperationType.STANDARDIZE_COLUMN_NAME,
-                column_name="all_columns",
-                params={},
-                justification="Standardize all column names to snake_case format",
-                expected_outcome="Consistent column naming"
-            ),
-            TransformationStep(
-                operation_type=OperationType.HANDLE_NULLS,
-                column_name="all_columns", 
-                params={},
-                justification="Handle missing values across all columns",
-                expected_outcome="Reduced missing data"
-            )
-        ]
-    
-    return TransformationPlan(
-        initial_data_overview_summary=data_schema.overview_summary,
-        transformation_steps=steps[:12],  # Limit to 12 steps
-        final_output_format="parquet",
-        overall_summary=f"Comprehensive data cleaning pipeline with {len(steps)} transformation steps including column standardization, missing value handling, data type conversions, and duplicate removal.",
-        requires_confirmation=True
-    )
+            try:
+                steps.append(TransformationStep(
+                    operation_type=OperationType.REMOVE_DUPLICATES,
+                    column_name="all_columns",
+                    params={},
+                    justification="Remove duplicate rows to ensure data quality",
+                    expected_outcome="Duplicate rows removed"
+                ))
+            except Exception as e:
+                print(f"Error creating duplicate removal step: {e}")
+        
+        # If no specific steps, add generic ones
+        if not steps:
+            try:
+                steps = [
+                    TransformationStep(
+                        operation_type=OperationType.STANDARDIZE_COLUMN_NAME,
+                        column_name="all_columns",
+                        params={},
+                        justification="Standardize all column names to snake_case format",
+                        expected_outcome="Consistent column naming"
+                    ),
+                    TransformationStep(
+                        operation_type=OperationType.HANDLE_NULLS,
+                        column_name="all_columns", 
+                        params={},
+                        justification="Handle missing values across all columns",
+                        expected_outcome="Reduced missing data"
+                    )
+                ]
+            except Exception as e:
+                print(f"Error creating generic steps: {e}")
+                # Ultimate fallback
+                steps = [
+                    TransformationStep(
+                        operation_type=OperationType.STANDARDIZE_COLUMN_NAME,
+                        column_name="all_columns",
+                        params={},
+                        justification="Basic data cleaning",
+                        expected_outcome="Improved data quality"
+                    )
+                ]
+        
+        # Get overview summary safely
+        overview_summary = "Dataset overview"
+        try:
+            if hasattr(data_schema, 'overview_summary'):
+                overview_summary = data_schema.overview_summary
+        except Exception as e:
+            print(f"Error getting overview summary: {e}")
+        
+        return TransformationPlan(
+            initial_data_overview_summary=overview_summary,
+            transformation_steps=steps[:12],  # Limit to 12 steps
+            final_output_format="parquet",
+            overall_summary=f"Comprehensive data cleaning pipeline with {len(steps)} transformation steps including column standardization, missing value handling, data type conversions, and duplicate removal.",
+            requires_confirmation=True
+        )
+        
+    except Exception as e:
+        print(f"Error in create_manual_transformation_plan: {e}")
+        # Ultimate fallback plan
+        return TransformationPlan(
+            initial_data_overview_summary="Dataset overview",
+            transformation_steps=[
+                TransformationStep(
+                    operation_type=OperationType.STANDARDIZE_COLUMN_NAME,
+                    column_name="all_columns",
+                    params={},
+                    justification="Basic data cleaning and standardization",
+                    expected_outcome="Improved data quality"
+                )
+            ],
+            final_output_format="parquet",
+            overall_summary="Basic data cleaning pipeline",
+            requires_confirmation=True
+        )

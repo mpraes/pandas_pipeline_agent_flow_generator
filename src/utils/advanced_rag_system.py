@@ -437,17 +437,29 @@ class AdvancedRAGSystem:
         """
         max_length = max_length or self.config.max_context_length
         
-        # Get relevant chunks
+        # Get relevant chunks with more permissive search
         results = self.hybrid_search(query)
+        
+        if not results.chunks:
+            # Try fallback search with even lower threshold
+            try:
+                results = self._fallback_search(query, top_k=10)
+            except Exception as e:
+                print(f"Fallback search also failed: {e}")
+                return "No relevant documentation found."
         
         if not results.chunks:
             return "No relevant documentation found."
         
-        # Format context
+        # Format context - be more permissive with score filtering
         context_parts = []
         current_length = 0
         
         for chunk, score in zip(results.chunks, results.scores):
+            # Accept chunks with lower similarity scores for better recall
+            if score < 0.05:  # Very permissive threshold
+                continue
+                
             chunk_text = f"[{chunk.metadata.get('title', 'Unknown')}]\n{chunk.content}\n"
             
             if current_length + len(chunk_text) > max_length:
@@ -455,6 +467,12 @@ class AdvancedRAGSystem:
                 
             context_parts.append(chunk_text)
             current_length += len(chunk_text)
+        
+        if not context_parts:
+            # If still no context, return at least one chunk regardless of score
+            chunk = results.chunks[0]
+            chunk_text = f"[{chunk.metadata.get('title', 'Unknown')}]\n{chunk.content}\n"
+            return chunk_text
         
         return "\n---\n".join(context_parts)
 
@@ -466,8 +484,8 @@ def create_rag_system() -> AdvancedRAGSystem:
     """
     config = RAGConfig(
         embedding_model="all-MiniLM-L6-v2",  # Fast and good quality
-        top_k_retrieval=5,
-        similarity_threshold=0.2,  # Lower threshold for more recall
+        top_k_retrieval=8,  # Increased from 5
+        similarity_threshold=0.1,  # Lowered from 0.2 for more recall
         max_context_length=3000
     )
     

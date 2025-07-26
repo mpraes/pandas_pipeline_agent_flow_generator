@@ -11,49 +11,49 @@ import json
 # === DATA CLEANING PATTERN TYPES ===
 
 class ColumnNamingStyle(Enum):
-    SNAKE_CASE = "snake_case"           # exemplo_coluna
-    KEBAB_CASE = "kebab-case"           # exemplo-coluna  
-    CAMEL_CASE = "camelCase"            # exemploColuna
-    PASCAL_CASE = "PascalCase"          # ExemploColuna
-    LOWER_UNDERSCORE = "lower_underscore" # exemplo_coluna (same as snake but explicit)
-    KEEP_ORIGINAL = "keep_original"     # Mantém formato original
+    SNAKE_CASE = "snake_case"           # example_column
+    KEBAB_CASE = "kebab-case"           # example-column  
+    CAMEL_CASE = "camelCase"            # exampleColumn
+    PASCAL_CASE = "PascalCase"          # ExampleColumn
+    LOWER_UNDERSCORE = "lower_underscore" # example_column (same as snake but explicit)
+    KEEP_ORIGINAL = "keep_original"     # Keep original format
 
 class StringCaseStyle(Enum):
-    LOWER = "lower"                     # texto em minúsculo
-    UPPER = "upper"                     # TEXTO EM MAIÚSCULO  
-    TITLE = "title"                     # Texto Em Título
-    SENTENCE = "sentence"               # Texto em sentença
-    KEEP_ORIGINAL = "keep_original"     # Mantém formato original
+    LOWER = "lower"                     # lowercase text
+    UPPER = "upper"                     # UPPERCASE TEXT  
+    TITLE = "title"                     # Text In Title Case
+    SENTENCE = "sentence"               # Text in sentence case
+    KEEP_ORIGINAL = "keep_original"     # Keep original format
 
 class NumericFormat(Enum):
-    DECIMAL_DOT = "decimal_dot"         # 1234.56 (padrão americano)
-    DECIMAL_COMMA = "decimal_comma"     # 1234,56 (padrão brasileiro)
-    AUTO_DETECT = "auto_detect"         # Detecta automaticamente
-    KEEP_ORIGINAL = "keep_original"     # Mantém formato original
+    DECIMAL_DOT = "decimal_dot"         # 1234.56 (American standard)
+    DECIMAL_COMMA = "decimal_comma"     # 1234,56 (Brazilian standard)
+    AUTO_DETECT = "auto_detect"         # Detect automatically
+    KEEP_ORIGINAL = "keep_original"     # Keep original format
 
 class DateFormat(Enum):
     ISO_FORMAT = "iso_format"           # YYYY-MM-DD
     US_FORMAT = "us_format"             # MM/DD/YYYY
     BR_FORMAT = "br_format"             # DD/MM/YYYY
-    AUTO_DETECT = "auto_detect"         # Detecta automaticamente
-    KEEP_ORIGINAL = "keep_original"     # Mantém formato original
+    AUTO_DETECT = "auto_detect"         # Detect automatically
+    KEEP_ORIGINAL = "keep_original"     # Keep original format
 
 class MissingValueStrategy(Enum):
-    DROP_ROWS = "drop_rows"             # Remove linhas com valores ausentes
-    FILL_ZERO = "fill_zero"             # Preenche com 0
-    FILL_MEAN = "fill_mean"             # Preenche com média (numérico)
-    FILL_MEDIAN = "fill_median"         # Preenche com mediana (numérico)
-    FILL_MODE = "fill_mode"             # Preenche com moda (categórico)
+    DROP_ROWS = "drop_rows"             # Remove rows with missing values
+    FILL_ZERO = "fill_zero"             # Fill with 0
+    FILL_MEAN = "fill_mean"             # Fill with mean (numeric)
+    FILL_MEDIAN = "fill_median"         # Fill with median (numeric)
+    FILL_MODE = "fill_mode"             # Fill with mode (categorical)
     FILL_FORWARD = "fill_forward"       # Forward fill
     FILL_BACKWARD = "fill_backward"     # Backward fill
-    FILL_CUSTOM = "fill_custom"         # Valor customizado
-    KEEP_AS_NULL = "keep_as_null"       # Mantém como nulo
+    FILL_CUSTOM = "fill_custom"         # Custom value
+    KEEP_AS_NULL = "keep_as_null"       # Keep as null
 
 class TextCleaningLevel(Enum):
-    MINIMAL = "minimal"                 # Remove apenas espaços extras
-    MODERATE = "moderate"               # Remove espaços, caracteres especiais básicos
-    AGGRESSIVE = "aggressive"           # Limpeza completa, remove acentos, etc.
-    CUSTOM = "custom"                   # Configuração customizada
+    MINIMAL = "minimal"                 # Remove only extra spaces
+    MODERATE = "moderate"               # Remove spaces, basic special characters
+    AGGRESSIVE = "aggressive"           # Complete cleaning, remove accents, etc.
+    CUSTOM = "custom"                   # Custom configuration
 
 # === DATA CLEANING PREFERENCES ===
 
@@ -122,10 +122,10 @@ def collect_user_preferences() -> DataCleaningPreferences:
     }
     
     print("Column naming style:")
-    print("1. snake_case (recommended) - exemplo_coluna")
-    print("2. kebab-case - exemplo-coluna") 
-    print("3. camelCase - exemploColuna")
-    print("4. PascalCase - ExemploColuna")
+    print("1. snake_case (recommended) - example_column")
+    print("2. kebab-case - example-column") 
+    print("3. camelCase - exampleColumn")
+    print("4. PascalCase - ExampleColumn")
     print("5. Keep original format")
     
     column_choice = input("Choose column naming style [1-5] (default: 1): ").strip() or "1"
@@ -147,10 +147,10 @@ def collect_user_preferences() -> DataCleaningPreferences:
     }
     
     print("Default string case style:")
-    print("1. lowercase - texto em minúsculo")
-    print("2. UPPERCASE - TEXTO EM MAIÚSCULO")
-    print("3. Title Case - Texto Em Título")
-    print("4. Sentence case - Texto em sentença")
+    print("1. lowercase - lowercase text")
+    print("2. UPPERCASE - UPPERCASE TEXT")
+    print("3. Title Case - Text In Title Case")
+    print("4. Sentence case - Text in sentence case")
     print("5. Keep original")
     
     string_choice = input("Choose string case style [1-5] (default: 5): ").strip() or "5"

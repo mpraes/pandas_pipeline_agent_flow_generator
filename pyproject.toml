@@ -1,32 +1,45 @@
 [project]
 name = "pandas-pipeline-agent-flow-generator"
 version = "0.1.0"
-description = "A Langgraph agent flow generator for Pandas data pipelines."
+description = "AI-powered data pipeline generator using LangGraph agents"
 readme = "README.md"
-requires-python = ">=3.12"
-
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
-    "langchain>=0.2.0",
-    "langgraph>=0.0.60",
-    "groq>=0.9.0",
+    "langchain>=0.1.0",
+    "langchain-groq>=0.1.0", 
+    "langgraph>=0.1.0",
     "pandas>=2.0.0",
-    "pyarrow>=15.0.0",
-    "tavily-python>=0.3.0",
-    "pytest>=8.0.0",
+    "numpy>=1.24.0",
     "python-dotenv>=1.0.0",
-    "pandera>=0.25.0",
-    # Adicione outras que você pode precisar
-    "langchain-groq>=0.3.6",
-    "sentence-transformers>=5.0.0",
-    "faiss-cpu>=1.11.0.post1",
-    "numpy>=2.3.2",
+    "tavily-python>=0.3.0",
+    "sentence-transformers>=2.2.0",
+    "faiss-cpu>=1.7.0",
+    "torch>=2.0.0",
+    # Add others you may need
 ]
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
 
-[tool.setuptools.packages]
-# Esta linha diz ao setuptools para procurar pacotes Python dentro do diretório 'src'.
-# Ele vai encontrar 'agents', 'core', 'pipelines' como subpacotes.
-find = { where = ["src"] }
+[project.urls]
+Homepage = "https://github.com/yourusername/pandas-pipeline-agent-flow-generator"
+Repository = "https://github.com/yourusername/pandas-pipeline-agent-flow-generator"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+# This line tells setuptools to look for Python packages inside the 'src' directory.

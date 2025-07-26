@@ -1,8 +1,8 @@
 # src/utils/data_quality_checklist.py
 """
-Sistema de checklist funcional para qualidade de dados.
-Fornece perguntas orientadoras estruturadas para os agentes de pipeline.
-Integrado com preferências personalizadas do usuário.
+Functional checklist system for data quality.
+Provides structured guiding questions for pipeline agents.
+Integrated with personalized user preferences.
 """
 
 from typing import List, NamedTuple, Optional
@@ -10,10 +10,10 @@ from enum import Enum
 from .interactive_data_patterns import (
     DataCleaningPreferences, 
     get_user_preferences,
-    MissingValueStrategy  # Import necessário
+    MissingValueStrategy  # Required import
 )
 
-# === TIPOS IMUTÁVEIS ===
+# === IMMUTABLE TYPES ===
 
 class DataQualityCategory(Enum):
     STRUCTURE = "structure"
@@ -37,186 +37,186 @@ class QualityInstructions(NamedTuple):
     user_instructions: Optional[str]
     focus_categories: List[DataQualityCategory]
 
-# === CRIADORES DE CHECKLIST POR CATEGORIA ===
+# === CHECKLIST CREATORS BY CATEGORY ===
 
 def create_structure_checklist() -> List[ChecklistItem]:
-    """Cria checklist para estrutura dos dados"""
+    """Creates checklist for data structure"""
     return [
         ChecklistItem(
-            question="Qual é a estrutura geral do dataset (linhas, colunas, formato)?",
+            question="What is the general structure of the dataset (rows, columns, format)?",
             category=DataQualityCategory.STRUCTURE,
             priority="high",
-            guidance="Entenda dimensões, se há cabeçalhos, se a estrutura faz sentido para o objetivo",
-            examples=["Dataset tabular com 1000 linhas x 15 colunas", "Dados em formato wide vs long"]
+            guidance="Understand dimensions, if there are headers, if the structure makes sense for the objective",
+            examples=["Tabular dataset with 1000 rows x 15 columns", "Data in wide vs long format"]
         ),
         ChecklistItem(
-            question="Existem colunas desnecessárias ou que podem ser removidas?",
+            question="Are there unnecessary columns that can be removed?",
             category=DataQualityCategory.STRUCTURE,
             priority="medium",
-            guidance="Identifique colunas vazias, duplicadas ou irrelevantes para o objetivo",
-            examples=["Colunas de ID interno", "Colunas completamente vazias", "Colunas de auditoria"]
+            guidance="Identify empty, duplicate, or irrelevant columns for the objective",
+            examples=["Internal ID columns", "Completely empty columns", "Audit columns"]
         ),
     ]
 
 def create_naming_checklist() -> List[ChecklistItem]:
-    """Cria checklist para nomenclatura e padrões"""
+    """Creates checklist for naming and patterns"""
     return [
         ChecklistItem(
-            question="Qual o padrão de nomenclatura das colunas e como padronizar?",
+            question="What is the column naming pattern and how to standardize it?",
             category=DataQualityCategory.NAMING,
             priority="high",
-            guidance="Defina convenção: snake_case, camelCase, espaços, caracteres especiais",
+            guidance="Define convention: snake_case, camelCase, spaces, special characters",
             examples=["user_name vs UserName vs 'User Name'", "data_nascimento vs dt_nasc"]
         ),
         ChecklistItem(
-            question="Há caracteres especiais, acentos ou espaços nos nomes das colunas?",
+            question="Are there special characters, accents, or spaces in column names?",
             category=DataQualityCategory.NAMING,
             priority="medium",
-            guidance="Considere remover acentos e caracteres especiais para compatibilidade",
+            guidance="Consider removing accents and special characters for compatibility",
             examples=["'Preço (R$)' -> 'preco_reais'", "'Data/Hora' -> 'data_hora'"]
         ),
     ]
 
 def create_data_types_checklist() -> List[ChecklistItem]:
-    """Cria checklist para tipos de dados"""
+    """Creates checklist for data types"""
     return [
         ChecklistItem(
-            question="Os tipos de dados das colunas estão corretos e otimizados?",
+            question="Are the column data types correct and optimized?",
             category=DataQualityCategory.DATA_TYPES,
             priority="high",
-            guidance="Verifique se datas são datetime, números são numeric, categorias são category",
-            examples=["'2023-01-01' como string -> datetime", "IDs como int64 -> string"]
+            guidance="Check if dates are datetime, numbers are numeric, categories are category",
+            examples=["'2023-01-01' as string -> datetime", "IDs as int64 -> string"]
         ),
         ChecklistItem(
-            question="Existem datas em formatos inconsistentes que precisam ser padronizadas?",
+            question="Are there dates in inconsistent formats that need to be standardized?",
             category=DataQualityCategory.DATA_TYPES,
             priority="high",
-            guidance="Identifique diferentes formatos de data e padronize para ISO format",
+            guidance="Identify different date formats and standardize to ISO format",
             examples=["01/02/2023 vs 2023-02-01 vs Feb 1, 2023"]
         ),
     ]
 
 def create_missing_values_checklist() -> List[ChecklistItem]:
-    """Cria checklist para valores ausentes"""
+    """Creates checklist for missing values"""
     return [
         ChecklistItem(
-            question="Como lidar com valores nulos/ausentes em colunas numéricas?",
+            question="How to handle missing values in numeric columns?",
             category=DataQualityCategory.MISSING_VALUES,
             priority="high",
-            guidance="Estratégias: média, mediana, zero, forward fill, ou remoção conforme contexto",
-            examples=["Preços nulos -> mediana", "Idades nulas -> média", "IDs nulos -> remover linha"]
+            guidance="Strategies: mean, median, zero, forward fill, or removal as per context",
+            examples=["Null prices -> median", "Null ages -> mean", "Null IDs -> remove row"]
         ),
         ChecklistItem(
-            question="Como tratar valores ausentes em colunas categóricas/texto?",
+            question="How to handle missing values in categorical/text columns?",
             category=DataQualityCategory.MISSING_VALUES,
             priority="high",
-            guidance="Considere: valor padrão, 'Não informado', moda, ou remoção",
-            examples=["Estado nulo -> 'Não informado'", "Categoria nula -> moda"]
+            guidance="Consider: default value, 'Not informed', mode, or removal",
+            examples=["Null state -> 'Not informed'", "Null category -> mode"]
         ),
         ChecklistItem(
-            question="Há representações implícitas de nulos (como 'N/A', '--', 'null')?",
+            question="Are there implicit null representations (like 'N/A', '--', 'null')?",
             category=DataQualityCategory.MISSING_VALUES,
             priority="medium",
-            guidance="Identifique e converta representações textuais de nulos para NaN",
-            examples=["'N/A', 'null', '--', '999999' como código de ausente"]
+            guidance="Identify and convert textual null representations to NaN",
+            examples=["'N/A', 'null', '--', '999999' as missing code"]
         ),
     ]
 
 def create_text_formatting_checklist() -> List[ChecklistItem]:
-    """Cria checklist para formatação de texto"""
+    """Creates checklist for text formatting"""
     return [
         ChecklistItem(
-            question="Como lidar com strings em upper/lower case inconsistentes?",
+            question="How to handle inconsistent upper/lower case strings?",
             category=DataQualityCategory.TEXT_FORMATTING,
             priority="medium",
-            guidance="Padronize case conforme contexto: nomes próprios (Title), códigos (UPPER), etc.",
-            examples=["'JOÃO SILVA' vs 'joão silva' -> 'João Silva'", "Estados: 'sp' -> 'SP'"]
+            guidance="Standardize case according to context: proper names (Title), codes (UPPER), etc.",
+            examples=["'JOÃO SILVA' vs 'joão silva' -> 'João Silva'", "States: 'sp' -> 'SP'"]
         ),
         ChecklistItem(
-            question="Existem espaços em branco desnecessários no início/fim dos textos?",
+            question="Are there unnecessary leading/trailing spaces in texts?",
             category=DataQualityCategory.TEXT_FORMATTING,
             priority="medium",
-            guidance="Remova espaços extras que podem afetar joins e comparações",
+            guidance="Remove extra spaces that can affect joins and comparisons",
             examples=["' São Paulo ' -> 'São Paulo'", "'  ABC  ' -> 'ABC'"]
         ),
         ChecklistItem(
-            question="Há caracteres de controle ou encoding incorreto nos textos?",
+            question="Are there incorrect control or encoding characters in texts?",
             category=DataQualityCategory.TEXT_FORMATTING,
             priority="low",
-            guidance="Identifique problemas de encoding como caracteres especiais malformados",
-            examples=["'São Paulo' aparecendo como 'SÃ£o Paulo'"]
+            guidance="Identify encoding issues like malformed special characters",
+            examples=["'São Paulo' appearing as 'SÃ£o Paulo'"]
         ),
     ]
 
 def create_numeric_values_checklist() -> List[ChecklistItem]:
-    """Cria checklist para valores numéricos"""
+    """Creates checklist for numeric values"""
     return [
         ChecklistItem(
-            question="Existem outliers nos dados numéricos que precisam ser tratados?",
+            question="Are there outliers in numeric data that need to be treated?",
             category=DataQualityCategory.NUMERIC_VALUES,
             priority="medium",
-            guidance="Identifique valores extremos: erros de digitação, medidas em unidades diferentes",
-            examples=["Idade: 999 anos", "Preço: R$ 0,01 vs R$ 1.000.000", "Salário negativo"]
+            guidance="Identify extreme values: typing errors, measurements in different units",
+            examples=["Age: 999 years", "Price: R$ 0,01 vs R$ 1.000.000", "Negative salary"]
         ),
         ChecklistItem(
-            question="Os valores numéricos estão na escala/unidade correta?",
+            question="Are the numeric values in the correct scale/unit?",
             category=DataQualityCategory.NUMERIC_VALUES,
             priority="high",
-            guidance="Verifique se valores precisam conversão: reais/centavos, metros/km, etc.",
-            examples=["Preços em centavos vs reais", "Distâncias em m vs km"]
+            guidance="Check if values need conversion: real/cents, meters/km, etc.",
+            examples=["Prices in cents vs reals", "Distances in m vs km"]
         ),
         ChecklistItem(
-            question="Há inconsistências em separadores decimais ou milhares?",
+            question="Are there inconsistencies in decimal or thousand separators?",
             category=DataQualityCategory.NUMERIC_VALUES,
             priority="medium",
-            guidance="Padronize formato numérico: vírgula vs ponto decimal, separadores de milhares",
+            guidance="Standardize numeric format: comma vs decimal point, thousand separators",
             examples=["1.234,56 vs 1,234.56", "1 234,56 vs 1234.56"]
         ),
     ]
 
 def create_duplicates_checklist() -> List[ChecklistItem]:
-    """Cria checklist para duplicatas"""
+    """Creates checklist for duplicates"""
     return [
         ChecklistItem(
-            question="Existem registros completamente duplicados?",
+            question="Are there completely duplicated records?",
             category=DataQualityCategory.DUPLICATES,
             priority="high",
-            guidance="Identifique e remova linhas idênticas, mantendo apenas uma ocorrência",
-            examples=["Mesmo cliente cadastrado múltiplas vezes com dados idênticos"]
+            guidance="Identify and remove identical rows, keeping only one occurrence",
+            examples=["Same customer registered multiple times with identical data"]
         ),
         ChecklistItem(
-            question="Há duplicatas parciais que precisam ser consolidadas?",
+            question="Are there partial duplicates that need to be consolidated?",
             category=DataQualityCategory.DUPLICATES,
             priority="medium",
-            guidance="Identifique registros similares que podem ser o mesmo item com pequenas diferenças",
-            examples=["'João Silva' vs 'Joao Silva'", "Mesmo produto com códigos diferentes"]
+            guidance="Identify similar records that might be the same item with small differences",
+            examples=["'João Silva' vs 'Joao Silva'", "Same product with different codes"]
         ),
     ]
 
 def create_business_rules_checklist() -> List[ChecklistItem]:
-    """Cria checklist para regras de negócio"""
+    """Creates checklist for business rules"""
     return [
         ChecklistItem(
-            question="Os dados respeitam as regras de negócio básicas?",
+            question="Do the data comply with basic business rules?",
             category=DataQualityCategory.BUSINESS_RULES,
             priority="high",
-            guidance="Valide consistência lógica: datas de nascimento vs idade, preços negativos, etc.",
-            examples=["Data nascimento futura", "Idade negativa", "Preço negativo para produto"]
+            guidance="Validate logical consistency: birth date vs age, negative prices, etc.",
+            examples=["Future birth date", "Negative age", "Negative price for product"]
         ),
         ChecklistItem(
-            question="Existem relacionamentos entre colunas que devem ser validados?",
+            question="Are there relationships between columns that need to be validated?",
             category=DataQualityCategory.BUSINESS_RULES,
             priority="medium",
-            guidance="Verifique consistência entre campos relacionados",
-            examples=["CEP vs Cidade/Estado", "Categoria vs Subcategoria", "Data início < Data fim"]
+            guidance="Verify consistency between related fields",
+            examples=["CEP vs City/State", "Category vs Subcategory", "Start date < End date"]
         ),
     ]
 
-# === FUNÇÕES PRINCIPAIS ===
+# === MAIN FUNCTIONS ===
 
 def create_complete_checklist() -> List[ChecklistItem]:
     """
-    Função pura que cria o checklist completo combinando todas as categorias
+    Pure function that creates the complete checklist by combining all categories
     """
     checklist_creators = [
         create_structure_checklist,
@@ -234,8 +234,8 @@ def create_complete_checklist() -> List[ChecklistItem]:
 def filter_checklist_by_priority(checklist: List[ChecklistItem], 
                                 min_priority: str = "medium") -> List[ChecklistItem]:
     """
-    Filtra checklist por prioridade
-    Ordem: high > medium > low
+    Filters checklist by priority
+    Order: high > medium > low
     """
     priority_order = {"high": 3, "medium": 2, "low": 1}
     min_level = priority_order.get(min_priority, 2)
@@ -246,7 +246,7 @@ def filter_checklist_by_priority(checklist: List[ChecklistItem],
 def filter_checklist_by_categories(checklist: List[ChecklistItem], 
                                   categories: List[DataQualityCategory]) -> List[ChecklistItem]:
     """
-    Filtra checklist por categorias específicas
+    Filters checklist by specific categories
     """
     if not categories:
         return checklist
@@ -255,11 +255,11 @@ def filter_checklist_by_categories(checklist: List[ChecklistItem],
 
 def format_checklist_as_instructions(checklist: List[ChecklistItem]) -> str:
     """
-    Converte checklist em string formatada para instruções dos agentes
+    Converts checklist to formatted string for agent instructions
     """
-    instructions = ["=== CHECKLIST DE QUALIDADE DE DADOS ===\n"]
+    instructions = ["=== DATA QUALITY CHECKLIST ===\n"]
     
-    # Agrupa por categoria
+    # Groups by category
     categories = {}
     for item in checklist:
         if item.category not in categories:
@@ -270,10 +270,10 @@ def format_checklist_as_instructions(checklist: List[ChecklistItem]) -> str:
         instructions.append(f"## {category.value.upper().replace('_', ' ')}")
         for i, item in enumerate(items, 1):
             instructions.append(f"{i}. **{item.question}**")
-            instructions.append(f"   - Orientação: {item.guidance}")
-            instructions.append(f"   - Prioridade: {item.priority}")
+            instructions.append(f"   - Guidance: {item.guidance}")
+            instructions.append(f"   - Priority: {item.priority}")
             if item.examples:
-                instructions.append(f"   - Exemplos: {'; '.join(item.examples)}")
+                instructions.append(f"   - Examples: {'; '.join(item.examples)}")
             instructions.append("")
         instructions.append("")
     
@@ -283,11 +283,11 @@ def create_quality_instructions(user_instructions: Optional[str] = None,
                               focus_categories: List[DataQualityCategory] = None,
                               min_priority: str = "medium") -> QualityInstructions:
     """
-    Função principal que cria as instruções completas para os agentes
+    Main function that creates complete instructions for agents
     """
     complete_checklist = create_complete_checklist()
     
-    # Aplica filtros
+    # Applies filters
     filtered_checklist = filter_checklist_by_priority(complete_checklist, min_priority)
     if focus_categories:
         filtered_checklist = filter_checklist_by_categories(filtered_checklist, focus_categories)
@@ -303,29 +303,29 @@ def get_enhanced_instructions(user_instructions: Optional[str] = None,
                             min_priority: str = "medium",
                             use_interactive_preferences: bool = True) -> str:
     """
-    Retorna as instruções completas formatadas para os agentes,
-    incluindo preferências personalizadas do usuário.
+    Returns complete formatted instructions for agents,
+    including personalized user preferences.
     
     Args:
-        user_instructions: Instruções básicas do usuário
-        focus_categories: Categorias específicas do checklist
-        min_priority: Prioridade mínima dos itens
-        use_interactive_preferences: Se deve coletar preferências interativamente
+        user_instructions: Basic user instructions
+        focus_categories: Specific checklist categories
+        min_priority: Minimum priority for items
+        use_interactive_preferences: If it should collect preferences interactively
     """
-    # Variável para armazenar preferências na sessão atual
+    # Variable to store preferences in the current session
     session_preferences = getattr(get_enhanced_instructions, '_session_preferences', None)
     
-    # Coleta preferências do usuário se solicitado e ainda não foram coletadas
+    # Collect user preferences if requested and not already collected
     user_preferences = None
     if use_interactive_preferences:
         if session_preferences is None:
             user_preferences = get_user_preferences(use_saved=True)
-            # Armazena as preferências na sessão para evitar re-perguntar
+            # Store preferences in the session to avoid re-asking
             get_enhanced_instructions._session_preferences = user_preferences
         else:
             user_preferences = session_preferences
     
-    # Cria checklist padrão
+    # Creates default checklist
     quality_instructions = create_quality_instructions(
         user_instructions, focus_categories, min_priority
     )
@@ -335,106 +335,106 @@ def get_enhanced_instructions(user_instructions: Optional[str] = None,
     final_instructions = []
     
     if user_instructions:
-        final_instructions.append("=== INSTRUÇÕES DO USUÁRIO ===")
+        final_instructions.append("=== USER INSTRUCTIONS ===")
         final_instructions.append(user_instructions)
         final_instructions.append("")
     
-    # Adiciona preferências personalizadas se coletadas
+    # Adds personalized preferences if collected
     if user_preferences:
-        final_instructions.append("=== PADRÕES DE LIMPEZA PERSONALIZADOS ===")
+        final_instructions.append("=== PERSONALIZED CLEANING PATTERNS ===")
         final_instructions.append(_format_user_preferences(user_preferences))
         final_instructions.append("")
     
     final_instructions.append(formatted_checklist)
-    final_instructions.append("=== ORIENTAÇÕES GERAIS ===")
+    final_instructions.append("=== GENERAL ORIENTATIONS ===")
     
     if user_preferences:
-        final_instructions.append("- Aplique os padrões personalizados definidos pelo usuário")
-        final_instructions.append("- Use as preferências como guia para todas as decisões de limpeza")
+        final_instructions.append("- Apply the user-defined personalized patterns")
+        final_instructions.append("- Use the preferences as a guide for all cleaning decisions")
     else:
-        final_instructions.append("- Use padrões de limpeza sensatos e amplamente aceitos")
-        final_instructions.append("- Priorize consistência e compatibilidade")
+        final_instructions.append("- Use sensible cleaning standards and widely accepted ones")
+        final_instructions.append("- Prioritize consistency and compatibility")
     
-    final_instructions.append("- Analise cada pergunta do checklist sistematicamente")
-    final_instructions.append("- Priorize itens de alta prioridade")
-    final_instructions.append("- Justifique suas decisões baseado no contexto dos dados")
-    final_instructions.append("- Considere o objetivo final da análise")
+    final_instructions.append("- Systematically analyze each checklist question")
+    final_instructions.append("- Prioritize high-priority items")
+    final_instructions.append("- Justify your decisions based on the context of the data")
+    final_instructions.append("- Consider the final objective of the analysis")
     
     return "\n".join(final_instructions)
 
 def _format_user_preferences(preferences: DataCleaningPreferences) -> str:
     """
-    Formata as preferências do usuário em texto legível para os agentes.
+    Formats user preferences into readable text for agents.
     
     Args:
-        preferences: Preferências de limpeza do usuário
+        preferences: User cleaning preferences
         
     Returns:
-        String formatada com as preferências
+        Formatted string with preferences
     """
     prefs_text = []
     
     # Column naming preferences
-    prefs_text.append("**NOMENCLATURA DE COLUNAS:**")
-    prefs_text.append(f"- Estilo: {preferences.column_naming_style.value}")
+    prefs_text.append("**COLUMN NAMING:**")
+    prefs_text.append(f"- Style: {preferences.column_naming_style.value}")
     if preferences.remove_column_spaces:
-        prefs_text.append("- Remover espaços dos nomes das colunas")
+        prefs_text.append("- Remove spaces from column names")
     if preferences.remove_column_accents:
-        prefs_text.append("- Remover acentos dos nomes das colunas")
+        prefs_text.append("- Remove accents from column names")
     if preferences.remove_column_special_chars:
-        prefs_text.append("- Remover caracteres especiais dos nomes das colunas")
+        prefs_text.append("- Remove special characters from column names")
     
     # String formatting preferences  
-    prefs_text.append("\n**FORMATAÇÃO DE STRINGS:**")
-    prefs_text.append(f"- Estilo de case: {preferences.string_case_style.value}")
-    prefs_text.append(f"- Nível de limpeza: {preferences.string_cleaning_level.value}")
+    prefs_text.append("\n**STRING FORMATTING:**")
+    prefs_text.append(f"- Case style: {preferences.string_case_style.value}")
+    prefs_text.append(f"- Cleaning level: {preferences.string_cleaning_level.value}")
     if preferences.remove_leading_trailing_spaces:
-        prefs_text.append("- Remover espaços no início/fim")
+        prefs_text.append("- Remove leading/trailing spaces")
     if preferences.normalize_whitespace:
-        prefs_text.append("- Normalizar espaços em branco")
+        prefs_text.append("- Normalize whitespace")
     
     # Numeric formatting preferences
-    prefs_text.append("\n**FORMATAÇÃO NUMÉRICA:**")
-    prefs_text.append(f"- Formato decimal: {preferences.numeric_format.value}")
+    prefs_text.append("\n**NUMERIC FORMATTING:**")
+    prefs_text.append(f"- Decimal format: {preferences.numeric_format.value}")
     if preferences.decimal_places is not None:
-        prefs_text.append(f"- Casas decimais padrão: {preferences.decimal_places}")
+        prefs_text.append(f"- Default decimal places: {preferences.decimal_places}")
     if preferences.remove_currency_symbols:
-        prefs_text.append("- Remover símbolos de moeda")
+        prefs_text.append("- Remove currency symbols")
     if preferences.handle_thousand_separators:
-        prefs_text.append("- Tratar separadores de milhares")
+        prefs_text.append("- Handle thousand separators")
     
     # Date formatting preferences
-    prefs_text.append("\n**FORMATAÇÃO DE DATAS:**")
-    prefs_text.append(f"- Formato preferido: {preferences.date_format.value}")
+    prefs_text.append("\n**DATE FORMATTING:**")
+    prefs_text.append(f"- Preferred format: {preferences.date_format.value}")
     if preferences.standardize_date_format:
-        prefs_text.append("- Padronizar todas as datas")
-    prefs_text.append(f"- Datas inválidas: {preferences.handle_invalid_dates}")
+        prefs_text.append("- Standardize all dates")
+    prefs_text.append(f"- Invalid dates: {preferences.handle_invalid_dates}")
     
     # Missing value preferences
-    prefs_text.append("\n**VALORES AUSENTES:**")
-    prefs_text.append(f"- Estratégia numérica: {preferences.numeric_missing_strategy.value}")
-    prefs_text.append(f"- Estratégia categórica: {preferences.categorical_missing_strategy.value}")
+    prefs_text.append("\n**MISSING VALUES:**")
+    prefs_text.append(f"- Numeric strategy: {preferences.numeric_missing_strategy.value}")
+    prefs_text.append(f"- Categorical strategy: {preferences.categorical_missing_strategy.value}")
     if preferences.categorical_missing_strategy in [MissingValueStrategy.FILL_CUSTOM]:
-        prefs_text.append(f"- Valor para categóricos ausentes: '{preferences.categorical_fill_value}'")
-    prefs_text.append(f"- Remover colunas com >{preferences.missing_threshold*100:.0f}% de valores ausentes")
+        prefs_text.append(f"- Value for missing categorical: '{preferences.categorical_fill_value}'")
+    prefs_text.append(f"- Remove columns with >{preferences.missing_threshold*100:.0f}% missing values")
     
     # General preferences
-    prefs_text.append("\n**PREFERÊNCIAS GERAIS:**")
+    prefs_text.append("\n**GENERAL PREFERENCES:**")
     if preferences.remove_duplicates:
-        prefs_text.append("- Remover duplicatas automaticamente")
+        prefs_text.append("- Remove duplicates automatically")
     if preferences.handle_outliers:
-        prefs_text.append("- Detectar e tratar outliers")
+        prefs_text.append("- Detect and treat outliers")
     if preferences.encoding_fix:
-        prefs_text.append("- Corrigir problemas de encoding")
+        prefs_text.append("- Fix encoding issues")
     if preferences.memory_optimization:
-        prefs_text.append("- Otimizar tipos de dados para memória")
+        prefs_text.append("- Optimize data types for memory")
     
     return "\n".join(prefs_text)
 
 def clear_session_preferences():
     """
-    Limpa as preferências da sessão atual.
-    Útil para forçar nova coleta de preferências.
+    Clears current session preferences.
+    Useful to force new preference collection.
     """
     if hasattr(get_enhanced_instructions, '_session_preferences'):
         delattr(get_enhanced_instructions, '_session_preferences')
