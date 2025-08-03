@@ -69,6 +69,12 @@ Thumbs.db
 # *.xlsx
 # *.json
 
+# Large data files (>100MB)
+*.csv
+*.xlsx
+*.json
+data/input_samples/
+
 # Model files
 *.pkl
 *.pickle

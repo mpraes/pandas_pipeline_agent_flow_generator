@@ -34,9 +34,16 @@ def _infer_column_schema(series: pd.Series) -> ColumnSchema:
     Returns:
         A ColumnSchema object representing the schema of the column.
     """
+    import numpy as np
+    
     dtype = str(series.dtype)
     is_nullable = series.isnull().any()
     unique_values = series.nunique() if series.dtype == 'object' or series.nunique() < 50 else None
+    
+    # Convert unique_values to Python int if it's numpy
+    if unique_values is not None and isinstance(unique_values, np.integer):
+        unique_values = int(unique_values)
+    
     top_values = None
     if series.dtype == 'object' or series.nunique() < 20:
         top_values_counts = series.value_counts(dropna=False).head(5)
@@ -47,10 +54,24 @@ def _infer_column_schema(series: pd.Series) -> ColumnSchema:
         if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_datetime64_any_dtype(series):
             min_val = series.min()
             max_val = series.max()
-            if pd.api.types.is_datetime64_any_dtype(series) and min_val is not None:
-                min_val = str(min_val)
-            if pd.api.types.is_datetime64_any_dtype(series) and max_val is not None:
-                max_val = str(max_val)
+            
+            # Convert numpy types to Python native types
+            if min_val is not None:
+                if isinstance(min_val, np.integer):
+                    min_val = int(min_val)
+                elif isinstance(min_val, np.floating):
+                    min_val = float(min_val)
+                elif pd.api.types.is_datetime64_any_dtype(series):
+                    min_val = str(min_val)
+                    
+            if max_val is not None:
+                if isinstance(max_val, np.integer):
+                    max_val = int(max_val)
+                elif isinstance(max_val, np.floating):
+                    max_val = float(max_val)
+                elif pd.api.types.is_datetime64_any_dtype(series):
+                    max_val = str(max_val)
+                    
         # Handle cases where min/max might not be directly comparable (e.g., mixed types in object column)
         elif series.dtype == 'object':
             pass # No min/max for object dtype unless explicitly converted
@@ -66,6 +87,32 @@ def _infer_column_schema(series: pd.Series) -> ColumnSchema:
         min_value=min_val,
         max_value=max_val,
     )
+
+def _detect_mixed_types(df: pd.DataFrame) -> Dict[str, Any]:
+    """Detect columns with mixed data types.
+    
+    Args:
+        df: A Pandas DataFrame object.
+        
+    Returns:
+        Dictionary with column names as keys and type information as values.
+    """
+    mixed_types = {}
+    
+    for col in df.columns:
+        # Get unique types in the column
+        types = set()
+        for value in df[col].dropna():
+            types.add(type(value).__name__)
+        
+        # If more than one type is found, it's mixed
+        if len(types) > 1:
+            mixed_types[col] = {
+                "types": list(types),
+                "sample_values": df[col].dropna().head(3).tolist()
+            }
+    
+    return mixed_types
 
 def _analyze_dataframe(df: pd.DataFrame) -> DataFrameSchema:
     """Analyzes the DataFrame and returns a DataFrameSchema object.
@@ -86,7 +133,34 @@ def _analyze_dataframe(df: pd.DataFrame) -> DataFrameSchema:
         columns=columns_schema,
         overview_summary="Placeholder for LLM to generate." # Placeholder that will be filled
     )
-    llm_summary_output = _get_summary_chain().invoke({"schema_json": temp_df_schema.model_dump_json(indent=2)})
+    
+    # Convert numpy types to Python native types for serialization
+    import numpy as np
+    
+    def convert_numpy_types(obj):
+        """Convert numpy types to Python native types for JSON serialization"""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(item) for item in obj]
+        else:
+            return obj
+    
+    # Convert the schema to a dict and handle numpy types
+    schema_dict = temp_df_schema.model_dump()
+    schema_dict = convert_numpy_types(schema_dict)
+    
+    # Convert back to JSON string
+    import json
+    schema_json = json.dumps(schema_dict, indent=2)
+    
+    llm_summary_output = _get_summary_chain().invoke({"schema_json": schema_json})
     overview_summary = llm_summary_output.content
 
     return DataFrameSchema(
@@ -99,44 +173,67 @@ def _analyze_dataframe(df: pd.DataFrame) -> DataFrameSchema:
 # Main "agent" function - will be a node in Langgraph
 def data_ingestion_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Langgraph node for data ingestion and analysis.
-    Receives file_path and source_type from state and returns df_schema.
-
-    Args:
-        state: A dictionary containing the file_path and source_type.
-
-    Returns:
-        A dictionary containing the df_schema.
+    Versão mais robusta com melhor tratamento de tipos mistos
     """
     file_path = state.get("file_path")
-    source_type = state.get("source_type", "csv") # Default to CSV if not specified
+    source_type = state.get("source_type", "csv")
 
     if not file_path:
         raise ValueError("File path not provided in graph state.")
 
     df = None
+    load_info = {"warnings": [], "method_used": ""}
+    
     if source_type == "csv":
-        try:
-            # Try to read with comma delimiter first
-            df = pd.read_csv(file_path)
-        except Exception as e:
-            # If that fails, try with semicolon delimiter
+        # Lista de estratégias de leitura
+        read_strategies = [
+            # Estratégia 1: Padrão com low_memory=False
+            {
+                "params": {"low_memory": False, "na_values": ['', 'NULL', 'null', 'NaN', 'nan', 'N/A', '#N/A']},
+                "name": "padrão"
+            },
+            # Estratégia 2: Com separador específico
+            {
+                "params": {"sep": ",", "low_memory": False, "na_values": ['', 'NULL', 'null', 'NaN', 'nan', 'N/A']},
+                "name": "sep=','"
+            },
+            # Estratégia 3: Auto-detect com engine python
+            {
+                "params": {"sep": None, "engine": "python", "low_memory": False},
+                "name": "auto-detect"
+            },
+            # Estratégia 4: Fallback - tudo como string
+            {
+                "params": {"dtype": str, "low_memory": False},
+                "name": "dtype=str"
+            }
+        ]
+        
+        last_error = None
+        for strategy in read_strategies:
             try:
-                df = pd.read_csv(file_path, sep=';')
-            except Exception as e2:
-                # If both fail, try to auto-detect the delimiter
-                try:
-                    df = pd.read_csv(file_path, sep=None, engine='python')
-                except Exception as e3:
-                    raise ValueError(f"Error reading CSV file {file_path}. Tried comma, semicolon, and auto-detection. Errors: {e}, {e2}, {e3}")
+                df = pd.read_csv(file_path, **strategy["params"])
+                load_info["method_used"] = strategy["name"]
+                print(f"✅ CSV carregado ({strategy['name']}): {df.shape[0]} linhas, {df.shape[1]} colunas")
+                break
+            except Exception as e:
+                last_error = e
+                continue
+        
+        if df is None:
+            raise ValueError(f"Não foi possível carregar CSV {file_path}. Último erro: {last_error}")
+            
     elif source_type == "json":
         try:
             df = pd.read_json(file_path)
+            load_info["method_used"] = "json_padrão"
         except Exception as e:
             raise ValueError(f"Error reading JSON file {file_path}: {e}")
+            
     elif source_type == "excel":
         try:
             df = pd.read_excel(file_path)
+            load_info["method_used"] = "excel_padrão"
         except Exception as e:
             raise ValueError(f"Error reading Excel file {file_path}: {e}")
     else:
@@ -145,7 +242,15 @@ def data_ingestion_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if df is None:
         raise ValueError("Could not load DataFrame.")
 
-    df_schema = _analyze_dataframe(df)
+    # Detectar e reportar problemas de tipos
+    mixed_type_info = _detect_mixed_types(df)
+    if mixed_type_info:
+        load_info["warnings"].append(f"Colunas com tipos mistos: {list(mixed_type_info.keys())}")
+        print(f"⚠️  {len(mixed_type_info)} colunas com tipos mistos detectadas")
 
-    # Returns a dictionary that will be used to update the graph state
+    df_schema = _analyze_dataframe(df)
+    
+    # Adicionar info de carregamento ao schema
+    df_schema.load_info = load_info
+
     return {"df_schema": df_schema}

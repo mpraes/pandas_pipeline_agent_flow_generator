@@ -1,6 +1,21 @@
 # 🚀 Pandas Pipeline Agent Flow Generator
 
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/yourusername/pandas-pipeline-agent-flow-generator)
+
 An intelligent, automated system for generating and testing pandas data cleaning pipelines using AI agents and structured quality checklists.
+
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Architecture](#️-architecture)
+- [Key Features](#-key-features)
+- [Quick Start](#-quick-start)
+- [Usage Examples](#-usage-examples)
+- [Configuration](#-configuration)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
 
 ## 📋 Overview
 
@@ -23,7 +38,8 @@ src/
 │   ├── transformation_planner_agent.py  # Creates cleaning strategies
 │   ├── approval_agent.py            # User approval workflow
 │   ├── code_generation_agent.py     # Generates executable pandas code
-│   ├── feedback_agent.py            # Handles user feedback
+│   ├── code_quality_agent.py        # Code quality assessment
+│   ├── refactoring_pipeline_agent.py # Code refactoring and optimization
 │   └── test_agent.py               # Tests generated pipelines
 ├── core/                     # Core System Components
 │   ├── data_schema.py              # Data models and schemas
@@ -46,8 +62,14 @@ graph TD
     B --> C[User Approval]
     C -->|Approved| D[Code Generation]
     C -->|Rejected| B
-    D --> E[Pipeline Testing]
-    E --> F[Output Generation]
+    D --> E[Code Quality Check]
+    E --> F[Initial Test Generation]
+    F -->|Regenerate Code| D
+    F -->|Continue| G[Refactoring Pipeline]
+    G --> H[Final Test Generation]
+    H -->|Refactor Again| G
+    H -->|Complete| I[Final Quality Check]
+    I --> J[End]
 ```
 
 ## 🎯 Key Features
@@ -57,6 +79,8 @@ graph TD
 - **Transformation Planner**: Creates comprehensive cleaning strategies
 - **Approval Agent**: Manages user feedback and plan refinement
 - **Code Generation Agent**: Produces executable pandas pipelines
+- **Code Quality Agent**: Assesses and improves code quality
+- **Refactoring Pipeline Agent**: Optimizes and refactors generated code
 - **Test Agent**: Validates generated code and data quality
 
 ### 📊 Data Quality Framework
@@ -81,7 +105,7 @@ graph TD
 ### Prerequisites
 
 ```bash
-# Python 3.12+ required
+# Python 3.9+ required
 python --version
 
 # Install uv package manager (recommended)
@@ -97,17 +121,42 @@ pip install -r requirements.txt
    - Visit [Groq Console](https://console.groq.com/)
    - Create a free account and get your API key
 
-2. **Configure Environment**:
+2. **Clone and Setup**:
+   ```bash
+   git clone https://github.com/yourusername/pandas-pipeline-agent-flow-generator.git
+   cd pandas-pipeline-agent-flow-generator
+   ```
+
+3. **Configure Environment**:
    ```bash
    cp .env.example .env
    # Edit .env and add your GROQ_API_KEY
    ```
 
-3. **Install Dependencies**:
+4. **Install Dependencies**:
    ```bash
+   # Using uv (recommended)
    uv sync
-   # Or with pip: pip install -e .
+   
+   # Or using pip
+   pip install -e .
    ```
+
+5. **Verify Installation**:
+   ```bash
+   python -c "import pandas; import langgraph; print('✅ Dependencies installed successfully!')"
+   ```
+
+### Quick Demo
+
+```bash
+# Run the system with sample data
+python main.py
+
+# This will process the sample CSV file and generate a cleaning pipeline
+```
+
+## 📖 Usage Examples
 
 ### Basic Usage
 
@@ -135,6 +184,19 @@ run_agent_flow(
     use_checklist=True,
     interactive_preferences=True
 )
+```
+
+### Available Functions
+
+```python
+# Run with basic checklist and testing
+run_with_basic_checklist_and_testing()
+
+# Run with focused checklist and testing
+run_with_focused_checklist_and_testing()
+
+# Run without checklist but with testing
+run_without_checklist_but_with_testing()
 ```
 
 ## 📋 Data Quality Categories
@@ -211,19 +273,34 @@ min_priority = "medium"  # Filter by priority level
 ## 📁 Project Structure
 
 ```
-pandas_pipeline_agent_flow_generator/
+pandas-pipeline-agent-flow-generator/
 ├── src/
 │   ├── agents/              # AI Agent implementations
+│   │   ├── data_ingestion_agent.py
+│   │   ├── transformation_planner_agent.py
+│   │   ├── approval_agent.py
+│   │   ├── code_generation_agent.py
+│   │   ├── code_quality_agent.py
+│   │   ├── refactoring_pipeline_agent.py
+│   │   └── test_agent.py
 │   ├── core/               # Core system components
+│   │   ├── data_schema.py
+│   │   ├── llm_config.py
+│   │   └── tavily_utils.py
 │   ├── utils/              # Utility systems
+│   │   ├── data_quality_checklist.py
+│   │   ├── interactive_data_patterns.py
+│   │   ├── hybrid_rag_system.py
+│   │   └── advanced_rag_system.py
 │   └── pipelines/          # Pipeline definitions
+│       └── main_pipeline_graph.py
 ├── data/
 │   ├── input_samples/      # Sample input files
-│   └── output_parquet/     # Generated output files
-├── pipelines/
-│   └── generated/          # Auto-generated pipeline code
-├── config/                 # Configuration files
+│   ├── output_parquet/     # Generated output files
+│   └── vector_db/          # Vector database for RAG
+├── pipelines/              # Generated pipeline code
 ├── tests/                  # Test suite
+├── config/                 # Configuration files
 ├── main.py                 # Main application entry point
 ├── pyproject.toml          # Project dependencies
 └── README.md              # This file
@@ -327,6 +404,41 @@ Specialized handling for Brazilian data formats:
 - DD/MM/YYYY date formats
 - Brazilian currency symbols (R$)
 - Portuguese column names and data
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**1. Groq API Key Error**
+```bash
+# Make sure your .env file contains:
+GROQ_API_KEY=your_actual_api_key_here
+```
+
+**2. Import Errors**
+```bash
+# Ensure you're in the project directory and dependencies are installed
+cd pandas-pipeline-agent-flow-generator
+uv sync
+```
+
+**3. File Path Issues**
+```bash
+# Make sure your data files exist in the correct location
+ls data/input_samples/
+```
+
+**4. Memory Issues with Large Files**
+```python
+# For large datasets, consider chunking or sampling
+df_sample = df.sample(n=10000)  # Process a sample first
+```
+
+### Performance Tips
+
+- Use `uv` instead of `pip` for faster dependency management
+- For large files (>1GB), consider using `dask` or chunking
+- Enable logging for debugging: `export LOG_LEVEL=DEBUG`
 
 ## 🤝 Contributing
 

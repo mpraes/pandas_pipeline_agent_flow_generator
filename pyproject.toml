@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "langchain>=0.1.0",
-    "langchain-groq>=0.1.0", 
+    "langchain-groq>=0.1.0",
     "langgraph>=0.1.0",
     "pandas>=2.0.0",
     "numpy>=1.24.0",
@@ -26,6 +26,8 @@ dependencies = [
     "faiss-cpu>=1.7.0",
     "torch>=2.0.0",
     # Add others you may need
+    "pydantic>=2.11.7",
+    "pydantic-ai>=0.4.11",
 ]
 
 [project.optional-dependencies]
